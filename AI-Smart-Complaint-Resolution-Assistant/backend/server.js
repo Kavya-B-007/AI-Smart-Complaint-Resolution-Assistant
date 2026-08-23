@@ -1,10 +1,11 @@
 const express = require("express");
 const cors = require("cors");
+const nodemailer = require("nodemailer");
 require("dotenv").config();
 
 const app = express();
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
@@ -12,6 +13,25 @@ app.use(express.json());
 // ================= TEMPORARY STORAGE =================
 
 const complaints = {};
+
+// ================= EMAIL CONFIGURATION =================
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+// Check email connection when server starts
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ Email configuration error:", error.message);
+  } else {
+    console.log("✅ Email service is ready");
+  }
+});
 
 // ================= HOME =================
 
@@ -51,7 +71,8 @@ app.post("/api/complaints/analyze", (req, res) => {
     let department = "General Administration";
     let priority = "Low";
 
-    // Hostel
+    // ================= HOSTEL =================
+
     if (
       text.includes("hostel") ||
       text.includes("room") ||
@@ -63,7 +84,8 @@ app.post("/api/complaints/analyze", (req, res) => {
       department = "Hostel Administration";
     }
 
-    // IT
+    // ================= IT =================
+
     else if (
       text.includes("computer") ||
       text.includes("wifi") ||
@@ -77,7 +99,8 @@ app.post("/api/complaints/analyze", (req, res) => {
       department = "IT Department";
     }
 
-    // Transport
+    // ================= TRANSPORT =================
+
     else if (
       text.includes("bus") ||
       text.includes("transport") ||
@@ -88,7 +111,8 @@ app.post("/api/complaints/analyze", (req, res) => {
       department = "Transport Department";
     }
 
-    // Academic
+    // ================= ACADEMIC =================
+
     else if (
       text.includes("exam") ||
       text.includes("mark") ||
@@ -102,7 +126,8 @@ app.post("/api/complaints/analyze", (req, res) => {
       department = "Academic Department";
     }
 
-    // Maintenance
+    // ================= MAINTENANCE =================
+
     else if (
       text.includes("fan") ||
       text.includes("light") ||
@@ -117,7 +142,8 @@ app.post("/api/complaints/analyze", (req, res) => {
       department = "Maintenance Department";
     }
 
-    // Accounts
+    // ================= ACCOUNTS =================
+
     else if (
       text.includes("fee") ||
       text.includes("payment") ||
@@ -129,7 +155,8 @@ app.post("/api/complaints/analyze", (req, res) => {
       department = "Accounts Department";
     }
 
-    // Priority
+    // ================= PRIORITY =================
+
     if (
       text.includes("urgent") ||
       text.includes("emergency") ||
@@ -137,13 +164,17 @@ app.post("/api/complaints/analyze", (req, res) => {
       text.includes("immediately")
     ) {
       priority = "High";
-    } else if (
+    }
+
+    else if (
       text.includes("problem") ||
       text.includes("issue") ||
       text.includes("not working")
     ) {
       priority = "Medium";
-    } else {
+    }
+
+    else {
       priority = "Low";
     }
 
@@ -158,7 +189,9 @@ app.post("/api/complaints/analyze", (req, res) => {
       success: true,
       analysis,
     });
+
   } catch (error) {
+
     console.error("Analysis Error:", error);
 
     res.status(500).json({
@@ -169,11 +202,13 @@ app.post("/api/complaints/analyze", (req, res) => {
 });
 
 // =====================================================
-// REGISTER COMPLAINT
+// REGISTER COMPLAINT + SEND EMAIL
 // =====================================================
 
-app.post("/api/complaints/register", (req, res) => {
+app.post("/api/complaints/register", async (req, res) => {
+
   try {
+
     const {
       complaint,
       category,
@@ -181,25 +216,43 @@ app.post("/api/complaints/register", (req, res) => {
       priority,
     } = req.body;
 
-    if (!complaint) {
+    if (!complaint || !complaint.trim()) {
+
       return res.status(400).json({
         success: false,
         message: "Complaint is required",
       });
+
     }
+
+    // ================= CREATE TICKET =================
 
     const ticketId =
       "CMP-" + Math.floor(100000 + Math.random() * 900000);
 
     const newComplaint = {
+
       id: ticketId,
-      complaint: complaint,
-      category: category || "General",
-      department: department || "General Administration",
-      priority: priority || "Medium",
+
+      complaint: complaint.trim(),
+
+      category:
+        category || "General",
+
+      department:
+        department || "General Administration",
+
+      priority:
+        priority || "Medium",
+
       status: "Pending",
-      createdAt: new Date().toISOString(),
+
+      createdAt:
+        new Date().toISOString(),
+
     };
+
+    // ================= SAVE COMPLAINT =================
 
     complaints[ticketId] = newComplaint;
 
@@ -208,67 +261,186 @@ app.post("/api/complaints/register", (req, res) => {
     console.log(newComplaint);
     console.log("=================================");
 
+    // =================================================
+    // SEND EMAIL
+    // =================================================
+
+    try {
+
+      await transporter.sendMail({
+
+        from: process.env.EMAIL_USER,
+
+        to: process.env.ADMIN_EMAIL,
+
+        subject:
+          `New Complaint Registered - ${ticketId}`,
+
+        text: `
+AI SMART COMPLAINT & RESOLUTION ASSISTANT
+==========================================
+
+New Complaint Registered
+
+Ticket ID:
+${ticketId}
+
+Complaint:
+${newComplaint.complaint}
+
+Category:
+${newComplaint.category}
+
+Department:
+${newComplaint.department}
+
+Priority:
+${newComplaint.priority}
+
+Status:
+${newComplaint.status}
+
+Created At:
+${newComplaint.createdAt}
+
+==========================================
+Please review and take the necessary action.
+        `,
+
+      });
+
+      console.log("📧 Email sent successfully");
+
+    } catch (emailError) {
+
+      console.error(
+        "❌ Email sending failed:",
+        emailError.message
+      );
+
+      // Complaint is still successfully registered
+    }
+
+    // ================= RESPONSE =================
+
     res.status(201).json({
+
       success: true,
-      message: "Complaint registered successfully",
-      ticket: newComplaint,
+
+      message:
+        "Complaint registered successfully",
+
+      ticket:
+        newComplaint,
+
     });
+
   } catch (error) {
-    console.error("Register Error:", error);
+
+    console.error(
+      "Register Error:",
+      error
+    );
 
     res.status(500).json({
+
       success: false,
-      message: "Failed to register complaint",
+
+      message:
+        "Failed to register complaint",
+
     });
+
   }
+
 });
 
 // =====================================================
 // TRACK COMPLAINT
 // =====================================================
 
-app.get("/api/complaints/:ticketId", (req, res) => {
-  try {
-    const ticketId = req.params.ticketId.trim();
+app.get(
+  "/api/complaints/:ticketId",
+  (req, res) => {
 
-    const ticket = complaints[ticketId];
+    try {
 
-    if (!ticket) {
-      return res.status(404).json({
-        success: false,
-        message: "Ticket not found",
+      const ticketId =
+        req.params.ticketId.trim();
+
+      const ticket =
+        complaints[ticketId];
+
+      if (!ticket) {
+
+        return res.status(404).json({
+
+          success: false,
+
+          message:
+            "Ticket not found",
+
+        });
+
+      }
+
+      res.json({
+
+        success: true,
+
+        ticket,
+
       });
+
+    } catch (error) {
+
+      console.error(
+        "Tracking Error:",
+        error
+      );
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Failed to track complaint",
+
+      });
+
     }
 
-    res.json({
-      success: true,
-      ticket,
-    });
-  } catch (error) {
-    console.error("Tracking Error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to track complaint",
-    });
   }
-});
+);
 
 // =====================================================
 // GET ALL COMPLAINTS
 // =====================================================
 
-app.get("/api/complaints", (req, res) => {
-  res.json({
-    success: true,
-    complaints: Object.values(complaints),
-  });
-});
+app.get(
+  "/api/complaints",
+  (req, res) => {
+
+    res.json({
+
+      success: true,
+
+      complaints:
+        Object.values(complaints),
+
+    });
+
+  }
+);
 
 // =====================================================
 // SERVER
 // =====================================================
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+
+  console.log(
+    `🚀 Server running on http://localhost:${PORT}`
+  );
+
 });

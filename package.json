@@ -16,8 +16,5 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "vite": "^6.0.0"
-  },
-  "optionalDependencies": {
-    "lightningcss-linux-x64-gnu": "1.33.0"
   }
 }

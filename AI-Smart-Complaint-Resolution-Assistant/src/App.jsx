@@ -658,10 +658,57 @@ const handleLogout = () => {
 
       // Save complaint
 
-      setComplaints((prev) => [
-        ...prev,
-        registeredTicket,
-      ]);
+      // Save complaint first
+complaints[ticketId] = newComplaint;
+
+console.log("=================================");
+console.log("Complaint Registered");
+console.log(newComplaint);
+console.log("=================================");
+
+// Send email without blocking the response
+transporter
+  .sendMail({
+    from: process.env.EMAIL_USER,
+    to: process.env.ADMIN_EMAIL,
+    subject: `New Complaint Registered - ${ticketId}`,
+    text: `
+AI SMART COMPLAINT & RESOLUTION ASSISTANT
+
+Ticket ID: ${ticketId}
+
+Complaint:
+${newComplaint.complaint}
+
+Category:
+${newComplaint.category}
+
+Department:
+${newComplaint.department}
+
+Priority:
+${newComplaint.priority}
+
+Status:
+${newComplaint.status}
+
+Created At:
+${newComplaint.createdAt}
+    `,
+  })
+  .then(() => {
+    console.log("📧 Email sent successfully");
+  })
+  .catch((error) => {
+    console.error("❌ Email sending failed:", error.message);
+  });
+
+// Respond immediately
+res.status(201).json({
+  success: true,
+  message: "Complaint registered successfully",
+  ticket: newComplaint,
+});
 
       // Confirmation message
 

@@ -550,7 +550,7 @@ const handleLogout = () => {
     try {
 
       const response = await fetch(
-        "https://ai-smart-complaint-resolution-assistant-7.onrender.com/",
+        "https://ai-smart-complaint-resolution-assistant-7.onrender.com/api/complaints/analyze",
         {
           method: "POST",
 
@@ -629,7 +629,7 @@ const handleLogout = () => {
     try {
 
       const response = await fetch(
-        "https://ai-smart-complaint-resolution-assistant-7.onrender.com/",
+        "https://ai-smart-complaint-resolution-assistant-7.onrender.com/api/complaints/register",
         {
           method: "POST",
 
@@ -719,7 +719,7 @@ const handleLogout = () => {
     try {
 
       const response = await fetch(
-        `https://ai-smart-complaint-resolution-assistant-7.onrender.com/${trackId.trim()}`
+        `https://ai-smart-complaint-resolution-assistant-7.onrender.com/api/complaints/${trackId.trim()}`
       );
 
       const data = await response.json();

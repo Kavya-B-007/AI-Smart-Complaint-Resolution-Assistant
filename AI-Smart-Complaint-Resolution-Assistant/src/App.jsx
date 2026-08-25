@@ -620,136 +620,86 @@ const handleLogout = () => {
 
   // ===================================================
   // SUBMIT COMPLAINT
-  // ===================================================
-
   const submitComplaint = async () => {
+  if (!showAnalysis) return;
 
-    if (!showAnalysis) return;
-
-    try {
-
-      const response = await fetch(
-        "https://ai-smart-complaint-resolution-assistant-7.onrender.com/api/complaints/register",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          body: JSON.stringify({
-            complaint: showAnalysis.summary,
-            category: showAnalysis.category,
-            department: showAnalysis.department,
-            priority: showAnalysis.priority,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "Failed to register complaint"
-        );
+  try {
+    const response = await fetch(
+      "https://ai-smart-complaint-resolution-assistant-7.onrender.com/api/complaints/register",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          complaint: showAnalysis.summary,
+          category: showAnalysis.category,
+          department: showAnalysis.department,
+          priority: showAnalysis.priority,
+        }),
       }
+    );
 
-      const registeredTicket = data.ticket;
+    const data = await response.json();
 
-      // Save complaint
-
-      // Save complaint first
-complaints[ticketId] = newComplaint;
-
-console.log("=================================");
-console.log("Complaint Registered");
-console.log(newComplaint);
-console.log("=================================");
-
-// Send email without blocking the response
-transporter
-  .sendMail({
-    from: process.env.EMAIL_USER,
-    to: process.env.ADMIN_EMAIL,
-    subject: `New Complaint Registered - ${ticketId}`,
-    text: `
-AI SMART COMPLAINT & RESOLUTION ASSISTANT
-
-Ticket ID: ${ticketId}
-
-Complaint:
-${newComplaint.complaint}
-
-Category:
-${newComplaint.category}
-
-Department:
-${newComplaint.department}
-
-Priority:
-${newComplaint.priority}
-
-Status:
-${newComplaint.status}
-
-Created At:
-${newComplaint.createdAt}
-    `,
-  })
-  .then(() => {
-    console.log("📧 Email sent successfully");
-  })
-  .catch((error) => {
-    console.error("❌ Email sending failed:", error.message);
-  });
-
-// Respond immediately
-res.status(201).json({
-  success: true,
-  message: "Complaint registered successfully",
-  ticket: newComplaint,
-});
-
-      // Confirmation message
-
-      const confirmationMessage = {
-        id: Date.now(),
-        sender: "ai",
-        text: `Your complaint has been successfully registered! 🎉 Your ticket ID is ${registeredTicket.id}.`,
-      };
-
-      setMessages((prev) => [
-        ...prev,
-        confirmationMessage,
-      ]);
-
-      // Show ticket
-
-      setTicket(registeredTicket);
-
-      // Hide analysis
-
-      setShowAnalysis(null);
-
-    } catch (error) {
-
-      console.error(
-        "Complaint Registration Error:",
-        error
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to register complaint"
       );
-
-      const errorMessage = {
-        id: Date.now(),
-        sender: "ai",
-        text: "❌ Unable to register your complaint. Please try again.",
-      };
-
-      setMessages((prev) => [
-        ...prev,
-        errorMessage,
-      ]);
     }
-  };
+
+    const registeredTicket = data.ticket;
+
+    // Save complaint in frontend state
+    setComplaints((prev) => [
+      ...prev,
+      {
+        id: registeredTicket.id,
+        complaint: showAnalysis.summary,
+        category: registeredTicket.category,
+        department: registeredTicket.department,
+        priority: registeredTicket.priority,
+        status: registeredTicket.status,
+        createdAt: registeredTicket.createdAt,
+      },
+    ]);
+
+    // Confirmation message
+    const confirmationMessage = {
+      id: Date.now(),
+      sender: "ai",
+      text: `Your complaint has been successfully registered! 🎉 Your ticket ID is ${registeredTicket.id}.`,
+    };
+
+    setMessages((prev) => [
+      ...prev,
+      confirmationMessage,
+    ]);
+
+    // Show ticket
+    setTicket(registeredTicket);
+
+    // Hide analysis
+    setShowAnalysis(null);
+
+  } catch (error) {
+    console.error(
+      "Complaint Registration Error:",
+      error
+    );
+
+    const errorMessage = {
+      id: Date.now(),
+      sender: "ai",
+      text: "❌ Unable to register your complaint. Please try again.",
+    };
+
+    setMessages((prev) => [
+      ...prev,
+      errorMessage,
+    ]);
+  }
+};
 
   // ===================================================
   // TRACK COMPLAINT
